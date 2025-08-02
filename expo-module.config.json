@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["RnGoogleSignInModule"]
+  },
+  "android": {
+    "modules": ["com.chronec.rngooglesignin.RnGoogleSignInModule"]
+  }
+}

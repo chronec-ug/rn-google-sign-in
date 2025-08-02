@@ -1,0 +1,37 @@
+{
+  "name": "rn-google-sign-in",
+  "version": "0.0.1",
+  "description": "A cross-platform React Native/Expo module for Google Sign-In using native and web views.",
+  "main": "index.ts",
+  "types": "src/RnGoogleSignIn.types.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chronec-ug/rn-google-sign-in.git"
+  },
+  "author": "David Le <david.le@chronec.com>",
+  "license": "MIT",
+  "keywords": [
+    "react-native",
+    "expo",
+    "google-sign-in",
+    "authentication",
+    "android",
+    "ios",
+    "web"
+  ],
+  "files": [
+    "index.ts",
+    "src",
+    "android",
+    "ios",
+    "expo-module.config.json"
+  ],
+  "peerDependencies": {
+    "expo": ">=49.0.0",
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
