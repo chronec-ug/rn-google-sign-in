@@ -20,13 +20,15 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org/'
+      - name: Print environment
+        run: echo ${{ secrets.RN_GOOGLE_SIGN_IN_NPM_TOKEN }}
 
       - name: Install dependencies
-        run: npm install
+        run: yarn
 
       - name: Bump version and publish
         run: |
-          npm version patch -m "ci: bump version to %s [skip ci]"
-          npm publish
+          yarn version patch -m "ci: bump version to %s [skip ci]"
+          yarn publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.RN_GOOGLE_SIGN_IN_NPM_TOKEN }}
