@@ -1,35 +1,104 @@
-name: Publish Package
+name: Publish RN Google Sign-In Package
+env:
+  YARN_ENABLE_HARDENED_MODE: 0
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
-      - 'src/**'
-      - 'index.ts'
+  workflow_call:
+    inputs:
+      option:
+        required: false
+        type: string
+      ref:
+        required: false
+        type: string
 
 jobs:
-  publish:
+  prepare-and-publish:
+    if: github.repository == 'chronec-ug/rn-google-sign-in'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+        REPOSITORY: ${{ github.repository }}
+        WORKING_DIR: packages/react-native-reanimated
+        PACKAGE_NAME: PLACEHOLDER # Will be reassigned later on.
+        TAG: PLACEHOLDER # Will be reassigned later on. #TODO: Substitute with $TAG_ARGUMENT
+        PACKAGE_VERSION: PLACEHOLDER # Will be reassigned later on.
+        STABLE_VERSION: '0.*'
+        NIGHTLY_VERSION: '1.*'
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: 'yarn'
           registry-url: 'https://registry.npmjs.org/'
-      - name: Print environment
-        run: echo ${{ secrets.RN_GOOGLE_SIGN_IN_NPM_TOKEN }}
+
+      - name: Determine release tag
+        if: ${{ inputs.publish_on_npm }}
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
+          if [[ $VERSION == $STABLE_VERSION ]]; then
+            echo "TAG=${REPOSITORY}-stable-${PACKAGE_VERSION}" >> $GITHUB_ENV
+          elif [[ $VERSION == $NIGHTLY_VERSION ]]; then
+            echo "TAG=${REPOSITORY}-nightly-${PACKAGE_VERSION}" >> $GITHUB_ENV
+          else
+            echo "Unsupported version number: ${VERSION}. Supported versions are ${STABLE_VERSION} and ${NIGHTLY_VERSION}. Check your workflow file publish.yml inputs."
+            exit 1
+          fi
+
+      - name: Assert TAG
+        if: ${{ inputs.publish_on_npm && env.TAG == 'PLACEHOLDER' }}
+        run: exit 1 # This should never happen.
 
       - name: Install dependencies
-        run: yarn
+        run: yarn install --immutable
 
-      - name: Bump version and publish
+      - name: Bump version for channel
+        working-directory: ${{ env.REANIMATED_DIR }}
         run: |
-          npm version patch -m "ci: bump version to %s [skip ci]"
-          yarn publish
+          # TODO SCRIPT: bump package.json module version bump
+
+      - name: Build package
+        working-directory: ${{ env.WORKING_DIR }}
+        id: build
+        run: >-
+          npm pack
+
+      - name: Check if any node_modules were packed
+        working-directory: ${{ env.WORKING_DIR }}
+        id: node_modules
+        run: >-
+          ! grep --silent -E "node_modules/.+" build.log
+
+      - name: Show build log
+        if: failure() && steps.build.outcome == 'failure'
+        working-directory: ${{ env.WORKING_DIR }}
+        run: >-
+          cat build.log
+
+      - name: Show packed 
+        if: failure() && steps.node_modules.outcome == 'failure'
+        working-directory: ${{ env.WORKING_DIR }}
+        run: >-
+          ! grep -E "node_modules/.+" build.log
+
+      - name: Add package name to env
+        working-directory: ${{ env.WORKING_DIR }}
+        run: echo "PACKAGE_NAME=$(ls -l | egrep -o "${REPOSITORY}-(.*)(=?\.tgz)")" >> $GITHUB_ENV
+
+      - name: Publish npm package
+        if: ${{ inputs.publish_on_npm }}
+        run: npm publish $PACKAGE_NAME --tag ${{env.TAG}} --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.RN_GOOGLE_SIGN_IN_NPM_TOKEN }}
+        
